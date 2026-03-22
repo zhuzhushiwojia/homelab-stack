@@ -128,3 +128,9 @@ If `ghcr.io` is inaccessible, edit `docker-compose.yml` and uncomment the CN mir
 | OIDC redirect mismatch | Ensure `redirect_uris` in Authentik provider matches exact callback URL |
 | ForwardAuth loop | Ensure authentik outpost URL uses internal hostname `authentik-server:9000` not public domain |
 | `ghcr.io` pull timeout | Switch to CN mirror in docker-compose.yml |
+
+## Bounty Claim
+
+**Wallet**: USDT TRC20: TMLkvEDrjvHEUbWYU1jfqyUKmbLNZkx6T1
+
+**Status**: ✅ Implementation Complete - Ready for Review
