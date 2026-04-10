@@ -1,6 +1,9 @@
+# Network Stack — AdGuard Home + WireGuard Easy + Nginx Proxy Manager
+# CN_MODE: Set to true in .env to use Chinese Docker mirrors
+
 services:
   adguardhome:
-    image: adguard/adguardhome:v0.107.55
+    image: ${CN_DOCKER_MIRROR:-}adguard/adguardhome:v0.107.55
     container_name: adguardhome
     restart: unless-stopped
     networks:
@@ -9,22 +12,63 @@ services:
       - adguard-work:/opt/adguardhome/work
       - adguard-conf:/opt/adguardhome/conf
     ports:
-      - 53:53/tcp
-      - 53:53/udp
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "67:67/udp"
+      - "68:68/udp"
     labels:
       - traefik.enable=true
-      - traefik.http.routers.adguard.rule=Host()
+      - "traefik.http.routers.adguard.rule=Host(`adguard.${DOMAIN}`)"
       - traefik.http.routers.adguard.entrypoints=websecure
       - traefik.http.routers.adguard.tls=true
       - traefik.http.services.adguard.loadbalancer.server.port=3000
     healthcheck:
-      test: [CMD, wget, -qO-, http://localhost:3000]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
+
+  wireguard:
+    image: ${CN_DOCKER_MIRROR:-}lscr.io/linuxserver/wireguard:1.0.20210914
+    container_name: wireguard
+    restart: unless-stopped
+    networks:
+      - proxy
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-Asia/Shanghai}
+      - SERVERURL=${WG_SERVER_URL:-auto}
+      - SERVERPORT=${WG_SERVER_PORT:-51820}
+      - PEERS=5
+      - PEERDNS=auto
+      - INTERNAL_SUBNET=${WG_INTERNAL_SUBNET:-10.13.13.0}
+    volumes:
+      - wireguard-config:/config
+      - /lib/modules:/lib/modules
+    ports:
+      - "51820:51820/udp"
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    labels:
+      - traefik.enable=true
+      - "traefik.http.routers.wireguard.rule=Host(`wg.${DOMAIN}`)"
+      - traefik.http.routers.wireguard.entrypoints=websecure
+      - traefik.http.routers.wireguard.tls=true
+      - traefik.http.services.wireguard.loadbalancer.server.port=51821
+    healthcheck:
+      test: ["CMD-SHELL", "wg show || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
   nginx-proxy-manager:
-    image: jc21/nginx-proxy-manager:2.11.3
+    image: ${CN_DOCKER_MIRROR:-}jc21/nginx-proxy-manager:2.11.3
     container_name: nginx-proxy-manager
     restart: unless-stopped
     networks:
@@ -33,24 +77,27 @@ services:
       - npm-data:/data
       - npm-letsencrypt:/etc/letsencrypt
     ports:
-      - 8181:81
+      - "8181:81"
     labels:
       - traefik.enable=true
-      - traefik.http.routers.npm.rule=Host()
+      - "traefik.http.routers.npm.rule=Host(`npm.${DOMAIN}`)"
       - traefik.http.routers.npm.entrypoints=websecure
       - traefik.http.routers.npm.tls=true
       - traefik.http.services.npm.loadbalancer.server.port=81
     healthcheck:
-      test: [CMD-SHELL, wget -q --spider http://localhost:3000/api/health || exit 0]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 0"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
+
 networks:
   proxy:
     external: true
+
 volumes:
   adguard-work:
   adguard-conf:
+  wireguard-config:
   npm-data:
   npm-letsencrypt:
