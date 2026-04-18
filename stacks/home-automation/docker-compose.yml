@@ -1,6 +1,9 @@
+# Home Automation Stack — Home Assistant + Node-RED + Mosquitto + Zigbee2MQTT
+# CN_MODE: Set to true in .env to use Chinese Docker mirrors
+
 services:
   homeassistant:
-    image: homeassistant/home-assistant:2024.11.3
+    image: ${CN_DOCKER_MIRROR:-}homeassistant/home-assistant:2024.11.3
     container_name: homeassistant
     restart: unless-stopped
     networks:
@@ -24,7 +27,7 @@ services:
       start_period: 60s
 
   node-red:
-    image: nodered/node-red:3.1.14
+    image: ${CN_DOCKER_MIRROR:-}nodered/node-red:3.1.14
     container_name: node-red
     restart: unless-stopped
     networks:
@@ -47,7 +50,7 @@ services:
       start_period: 30s
 
   mosquitto:
-    image: eclipse-mosquitto:2.0.20
+    image: ${CN_DOCKER_MIRROR:-}eclipse-mosquitto:2.0.20
     container_name: mosquitto
     restart: unless-stopped
     networks:
@@ -66,13 +69,18 @@ services:
       start_period: 15s
 
   zigbee2mqtt:
-    image: koenkk/zigbee2mqtt:1.41.0
+    image: ${CN_DOCKER_MIRROR:-}koenkk/zigbee2mqtt:1.41.0
     container_name: zigbee2mqtt
     restart: unless-stopped
     networks:
       - proxy
     volumes:
       - zigbee2mqtt-data:/app/data
+      # Uncomment and adjust for your Zigbee USB dongle:
+      # - /dev/ttyACM0:/dev/ttyACM0  # CC2652/CC2531 dongle
+      # - /dev/ttyUSB0:/dev/ttyUSB0  # Alternative USB path
+    # devices:
+    #   - /dev/ttyACM0:/dev/ttyACM0  # Required for direct device access
     environment:
       - TZ=${TZ:-Asia/Shanghai}
     depends_on:
